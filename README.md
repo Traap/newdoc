@@ -14,7 +14,7 @@ minimum requirements defined by **autodoc, **docbld**, and **tlc-article**.
 $ cd $HOME
 $ git clone git@github.com:Traap/newdoc.git
 ```
-```
+
 ### Add this function to .bashrc
 ```bash
 NEWDOCPATH=${HOME}/git/newdoc
@@ -43,8 +43,17 @@ OPTIONS
   --help                         Display this help message.
 
 ```
-
-### Convention
+### Example
+```
+newdoc --dir report/summary --file=001 --title='Foo' --shared --logo
+newdoc --dir report/summary --file=002 --title='Bar' --shared
+newdoc --dir report/summary --file=003 --title='Baz' 
+```
+### Copied Files
+| Option | Files                      | Destination |
+| --file | fileName.tex fileName.texx | path/to/dir/filename path/to/dir/filename/data
+| --logo | logo.png                   | path/to/dir/filename/data
+| --shared  
 
 ## Project Management
 Please refer to my [Lightweight Project Mangement](https://github.com/Traap/lpm)
