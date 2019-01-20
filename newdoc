@@ -1,0 +1,311 @@
+#!/bin/bash
+# ------------------------------------------------------------------------------
+# This script creates the scaffolding for a new LaTeX document that is
+# compatible with docbld.
+# ------------------------------------------------------------------------------
+
+# These flags enable optional features.
+
+dirFlag=0;    # Create a directory when true.
+fileFlag=0;   # Create file when true.
+helpFlag=1;   # Show help.
+logoFlag=0;   # Copy a logo when requested.
+shareFlag=0;  # Use shared document header and footer when true.
+titleFlag=0;  # Document title to use when true.
+
+# ------------------------------------------------------------------------------
+# Orchestrate the show.
+# ------------------------------------------------------------------------------
+main() {
+  parseOptions "$@"
+  if [ $helpFlag == 1 ]; then
+    showHelp
+  else
+    makeDoc
+  fi
+}
+
+# ------------------------------------------------------------------------------
+# Show the help text for the script and then terminate execution.
+# ------------------------------------------------------------------------------
+showHelp() {
+   echo "Run newdoc to create the scaffolding for a new LaTeX document "
+   echo "that is compatible with autodoc, docbld, and tlc-article."
+   echo
+   echo "Usage: newdoc [OPTIONS]"
+   echo
+   echo "OPTIONS"
+   echo "  --dir=path/to/dir              Directory to create."
+   echo "  --file=fileName                File to create."
+   echo "  --title='Your Document Title'  Document title to use."
+   echo ""
+   echo "  --logo                         Seed document a logo."
+   echo "  --share                        Use shared header and footer data."
+   echo ""
+   echo "  --help                         Display this help message."
+   echo ""
+   checkForAutoDoc
+}
+
+# ------------------------------------------------------------------------------
+# Parse the command line options.   If the help flag is encountered, or if the
+# command line option is not recognized, then display the help information and
+# terminate gracefully.
+#
+# Arguments:
+# A non-empty array containing the command line options.
+# ------------------------------------------------------------------------------
+parseOptions() {
+  # Iterate through the list of options.
+  if [ $# -eq 0 ]; then
+    helpFlag=1
+  else
+    helpFlag=0
+    for var in "$@"
+    do
+      case $var in
+        --dir*)
+          dir="${var#*=}"
+          dirFlag=1
+          shift
+          ;;
+        --file*)
+          fileName="${var#*=}"
+          fileFlag=1
+          ;;
+        --help)
+          helpFlag=1
+          /;;
+        --logo*)
+          logoFlag=1
+          ;;
+        --title*)
+          title="${var#*=}"
+          titleFlag=1
+          ;;
+        --share*)
+          shareFlag=1
+          ;;
+        *)
+          echo "Unknown argument $var"
+          echo
+          helpFlag=1
+          ;;
+      esac
+      shift
+    done
+  fi
+}
+
+# ------------------------------------------------------------------------------
+# Make a new document.
+# ------------------------------------------------------------------------------
+makeDoc() {
+  # AUTODOCPATH must be defined.
+  checkForAutoDoc
+
+  # Save current working directory.
+  cwd=$(pwd)
+
+  # Move to DOCBLDPATH
+  cd ${DOCBLDPATH}
+
+  # Create document directories. 
+  createDocDir
+  createDataDir
+  createSharedDataDir
+
+  # Uppercase the document number.  
+  toUpperdocNbr
+
+  # Copy files to the new document location.
+  copyTexFile
+  copyTexxBuilderFile
+  copyChangeSummary
+  copySignatures
+  copyVersion
+  copyAdditionalLayout
+  copyHeaderFooter
+  copyFindAutoDoc
+  copyLogo
+
+  # Returned to saved working directory.
+  cd ${cwd}
+}
+
+# ------------------------------------------------------------------------------
+# Create document directories from your current directory.
+# ------------------------------------------------------------------------------
+createDocDir() {
+  subDir=''"${cwd}"'/'"${dir}"''
+  msg "Creating document directory ${subDir}"
+  mkdir -p -v ${subDir}
+}
+
+# ------------------------------------------------------------------------------
+# Create the data directory that is needed for document data. 
+# ------------------------------------------------------------------------------
+createDataDir() {
+  dataDir=''"${subDir}"/data''
+  msg "Creating document data directory ${dataDir}"
+  mkdir -p -v ${dataDir}
+} 
+
+# ------------------------------------------------------------------------------
+# Create the shared data directory when needed to share LaTeX files.
+# ------------------------------------------------------------------------------
+createSharedDataDir() {
+  if [ $shareFlag == 1 ]; then
+    sharedDataDir=''"${subDir%/*}"/shared/data''
+    msg "Creating project shared data directory ${sharedDataDir}"
+    mkdir -p -v ${sharedDataDir}
+  fi
+}
+
+# ------------------------------------------------------------------------------
+# toUpper docNbr for the title only.
+# ------------------------------------------------------------------------------
+toUpperdocNbr() {
+  docNbr=`echo "${fileName}" | tr '[:lower:]' '[:upper:]'`
+}
+
+# ------------------------------------------------------------------------------
+# Sed is used to replace markers in the tex file.
+# ------------------------------------------------------------------------------
+copyTexFile() {
+  msg "Copying primary LaTeX file ${subDir}/${fileName}.tex"
+  sed -e 's/%docNbr/'"${docNbr}"'/' \
+      -e 's/%doctitle/'"${title}"'/' \
+      -e 's/%\\input/\\input/'  data/nnnnnn.txt > ${subDir}/${fileName}.tex
+}
+
+# ------------------------------------------------------------------------------
+# Sed is used to replace markers in the texx builder file.
+# ------------------------------------------------------------------------------
+copyTexxBuilderFile() {
+  msg "Copying docbld file ${subDir}/${fileName}.texx"
+  sed -e 's/%docNbr/'"${fileName}"'/' \
+         data/nnnnnn.txtt > ${subDir}/${fileName}.texx
+}
+
+# ------------------------------------------------------------------------------
+# A boilerplate document change summary is copied to the document directory.
+# ------------------------------------------------------------------------------
+copyChangeSummary() {
+  msg "Copying change summary file ${subDir}/change-summary.texx"
+  cp -v data/change-summary.tex ${subDir}/change-summary.tex
+}
+
+# ------------------------------------------------------------------------------
+# A boilerplate document signature is copied to the document directory.
+# ------------------------------------------------------------------------------
+copySignatures() {
+  msg "Copying signature file ${subDir}/signatures.tex"
+  cp -v data/signatures.tex ${subDir}/signatures.tex
+}
+
+# ------------------------------------------------------------------------------
+# sed is used to replace markers in version.txt. 
+# ------------------------------------------------------------------------------
+copyVersion() {
+  msg "Copying version file ${dataDir}/${dataDir}.tex"
+  sed -e 's/%docNbr/'"${docNbr}"'/' data/version.txt > ${dataDir}/version.tex
+}
+
+# ------------------------------------------------------------------------------
+# Copy files used by tlc-article to layout document to the data directory.
+# ------------------------------------------------------------------------------
+copyAdditionalLayout() {
+  msg "Copying additional layout file ${dataDir}/additional-layout.tex"
+
+  if [ $shareFlag == 1 ]; then
+    cp -v data/additional-layout-shared.tex ${dataDir}/additional-layout.tex
+
+    # Don't overwrite an existing file.
+    if [ ! -f "${sharedDataDir}/additional-layout.tex" ]; then
+      msg "Copying shared additional layout file ${sharedDataDir}/additional-layout.tex"
+      sed -e 's/%dataDir/..\/shared\/data/'  \
+              data/additional-layout.txt > \
+              ${sharedDataDir}/additional-layout.tex
+    fi
+
+  else
+    sed -e 's/%dataDir/data/' \
+            data/additional-layout.txt > ${dataDir}/additional-layout.tex
+  fi
+}
+
+# ------------------------------------------------------------------------------
+# Copy files used by tlc-article to layout header and document footer
+# to the data directory.
+# ------------------------------------------------------------------------------
+copyHeaderFooter() {
+  msg "Copying header footer file ${dataDir}/header-footer.tex"
+  if [ $shareFlag == 1 ]; then
+    cp -v data/header-footer-shared.tex ${dataDir}/header-footer.tex
+
+    # Don't overwrite an existing file.
+    if [ ! -f "${sharedDataDir}/header-footer.tex" ]; then
+      cp -v data/header-footer.tex ${sharedDataDir}/header-footer.tex
+    fi
+
+  else
+    cp -v data/header-footer.tex ${dataDir}/header-footer.tex
+  fi
+}
+
+# ------------------------------------------------------------------------------
+# Copy the file used to define \audoDocdir 
+# ------------------------------------------------------------------------------
+copyFindAutoDoc() {
+  if [ $shareFlag == 1 ]; then
+    # Don't overwrite an existing file.
+    if [ ! -f "${sharedDataDir}/find-autodoc.tex" ]; then
+      msg "Copying shared find autodoc file ${sharedDataDir}/find-autodoc.tex"
+      cp -v data/find-autodoc.tex ${sharedDataDir}/find-autodoc.tex
+    fi
+  else
+    msg "Copying find autodoc file ${dataDir}/find-autodoc.tex"
+    cp -v data/find-autodoc.tex ${dataDir}/find-autodoc.tex
+  fi
+}
+
+# ------------------------------------------------------------------------------
+# Copy document logo when requested. 
+# ------------------------------------------------------------------------------
+copyLogo() {
+  if [ $logoFlag == 1 ]; then
+    msg "Copying logo file ${dataDir}/logo.png"
+    cp -v data/logo.png ${dataDir}/logo.png
+  fi
+}
+
+# ------------------------------------------------------------------------------
+# check for autodoc directory
+# ------------------------------------------------------------------------------
+checkForAutoDoc() {
+  if [ -z ${AUTODOCPATH} ]; then
+    msg "AUTODOCPATH must be defined."
+    exit
+  else
+    if [ -f ${AUTODOCPATH}/boilerplate/project-directories.tex ]; then
+      return;
+    else
+      msg ${AUTODOCPATH}/boilerplate/project-directories.tex "was not found."
+      exit;
+    fi
+  fi
+}
+
+# ------------------------------------------------------------------------------
+# msg is used to format strings to the console. 
+# ------------------------------------------------------------------------------
+msg() {
+  echo ""
+  echo $1
+}
+
+# ------------------------------------------------------------------------------
+# Kick start this script.
+# ------------------------------------------------------------------------------
+main "$@"

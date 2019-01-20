@@ -1,0 +1,20 @@
+% ------------------------------------------------------------------------------
+% NOTE:  The change summary is added to the table of contents as without
+% a paragraph number.
+\phantomsection%
+\addcontentsline{toc}{section}{Change Summary}
+\section*{Change Summary}\label{sec:changesummary}%
+\begin{longtable}[h]{|L{7.5cm}|L{7.5cm}|}\hline%
+  \rowcolor{cyan}
+  Change & Justification\ER%
+  \endhead%
+
+  % The change summary table has two columns: change and justification.  The
+  % & symbol separates the columns.  Escaping, \&,  the & symbol is mandatory
+  % when used in the change or justification section. The & symbol is used to
+  % separate the two columns.  The \ER ,end row, must follow the justification
+  % to terminate the table row.
+
+  Initial version. & New document.\ER%
+\end{longtable}
+% ------------------------------------------------------------------------------
