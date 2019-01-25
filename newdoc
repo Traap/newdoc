@@ -44,7 +44,7 @@ showHelp() {
    echo ""
    echo "  --help                         Display this help message."
    echo ""
-   checkForAutoDoc
+   checkForNewDocPath
 }
 
 # ------------------------------------------------------------------------------
@@ -101,14 +101,14 @@ parseOptions() {
 # Make a new document.
 # ------------------------------------------------------------------------------
 makeDoc() {
-  # AUTODOCPATH must be defined.
-  checkForAutoDoc
+  # NEWDOCPATH must be defined.
+  checkForNewDocPath
 
   # Save current working directory.
   cwd=$(pwd)
 
-  # Move to DOCBLDPATH
-  cd ${DOCBLDPATH}
+  # Move to NEWDOCPATH
+  cd ${NEWDOCPATH}
 
   # Create document directories. 
   createDocDir
@@ -174,8 +174,7 @@ toUpperdocNbr() {
 # ------------------------------------------------------------------------------
 copyTexFile() {
   msg "Copying primary LaTeX file ${subDir}/${fileName}.tex"
-  sed -e 's/%docNbr/'"${docNbr}"'/' \
-      -e 's/%doctitle/'"${title}"'/' \
+  sed -e 's/%docTitle/'"${title}"'/' \
       -e 's/%\\input/\\input/'  data/nnnnnn.txt > ${subDir}/${fileName}.tex
 }
 
@@ -281,19 +280,12 @@ copyLogo() {
 }
 
 # ------------------------------------------------------------------------------
-# check for autodoc directory
+# check for NEWDOCPATH 
 # ------------------------------------------------------------------------------
-checkForAutoDoc() {
-  if [ -z ${AUTODOCPATH} ]; then
-    msg "AUTODOCPATH must be defined."
+checkForNewDocPath() {
+  if [ ! -d ${NEWDOCPATH} ]; then
+    msg "NEWDOCPATH [${NEWDOCPATH}] must be defined.  Aborting!"
     exit
-  else
-    if [ -f ${AUTODOCPATH}/boilerplate/project-directories.tex ]; then
-      return;
-    else
-      msg ${AUTODOCPATH}/boilerplate/project-directories.tex "was not found."
-      exit;
-    fi
   fi
 }
 

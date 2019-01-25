@@ -1,6 +1,6 @@
 % ------------------------------------------------------------------------------
-% Your system enviornment variable AUTODOCPATH MUST be delcared and you MUST
-% define autodocDir first.  These two manditory requriements must be met so
+% Your system environment variable AUTODOCPATH MUST be declared and you MUST
+% define autodocDir first.  These two mandatory requirements must be met so
 % that your customizations work.
 \input{%dataDir/find-autodoc.tex}
 \tlcGetEnv[\autodocDir]{AUTODOCPATH}
