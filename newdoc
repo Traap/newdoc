@@ -6,19 +6,20 @@
 
 # These flags enable optional features.
 
-dirFlag=0;    # Create a directory when true.
-fileFlag=0;   # Create file when true.
-helpFlag=1;   # Show help.
-logoFlag=0;   # Copy a logo when requested.
-shareFlag=0;  # Use shared document header and footer when true.
-titleFlag=0;  # Document title to use when true.
+dirFlag=0;         # Create a directory when true.
+fileFlag=0;        # Create file when true.
+helpFlag=1;        # Show help.
+logoFlag=0;        # Copy a logo when requested.
+shareFlag=0;       # Use shared document header and footer when true.
+tofFlag=0;         # Create a test results hook into Test Output Factory.
+titleFlag=0;       # Document title to use when true.
 
 # ------------------------------------------------------------------------------
 # Orchestrate the show.
 # ------------------------------------------------------------------------------
 main() {
   parseOptions "$@"
-  if [ $helpFlag == 1 ]; then
+  if [[ $helpFlag == 1 ]]; then
     showHelp
   else
     makeDoc
@@ -32,15 +33,17 @@ showHelp() {
    echo "Run newdoc to create the scaffolding for a new LaTeX document "
    echo "that is compatible with autodoc, docbld, and tlc-article."
    echo
-   echo "Usage: newdoc [OPTIONS]"
+   echo "Usage: newdoc -dir= [other options]"
    echo
    echo "OPTIONS"
    echo "  --dir=path/to/dir              Directory to create."
    echo "  --file=fileName                File to create."
    echo "  --title='Your Document Title'  Document title to use."
-   echo ""
+   echo 
    echo "  --logo                         Seed document a logo."
    echo "  --share                        Use shared header and footer data."
+   echo
+   echo "  --tof                          Hook into Test Output Factory." 
    echo ""
    echo "  --help                         Display this help message."
    echo ""
@@ -57,7 +60,7 @@ showHelp() {
 # ------------------------------------------------------------------------------
 parseOptions() {
   # Iterate through the list of options.
-  if [ $# -eq 0 ]; then
+  if [[ $# -eq 0 ]]; then
     helpFlag=1
   else
     helpFlag=0
@@ -83,6 +86,10 @@ parseOptions() {
           title="${var#*=}"
           titleFlag=1
           ;;
+        --tof*)
+          tof="${var#*=}"
+          tofFlag=1
+          ;;
         --share*)
           shareFlag=1
           ;;
@@ -98,11 +105,17 @@ parseOptions() {
 }
 
 # ------------------------------------------------------------------------------
-# Make a new document.
+# makeDoc orchestrates setting up the scaffolding needed for a new LaTeX
+# document that is compliant with tlc-article, autodoc, docbld, and amber.
+#
+# This function is the workflow.  Each function called determines whether or not
+# it has work.  Each function will setup environment variables that other 
+# functions may use.
 # ------------------------------------------------------------------------------
 makeDoc() {
   # NEWDOCPATH must be defined.
   checkForNewDocPath
+  checkForValidFlags
 
   # Save current working directory.
   cwd=$(pwd)
@@ -114,6 +127,7 @@ makeDoc() {
   createDocDir
   createDataDir
   createSharedDataDir
+  createTOFDir
 
   # Uppercase the document number.  
   toUpperdocNbr
@@ -128,34 +142,61 @@ makeDoc() {
   copyHeaderFooter
   copyFindAutoDoc
   copyLogo
+  copyTOF
 
   # Returned to saved working directory.
   cd ${cwd}
 }
 
 # ------------------------------------------------------------------------------
+# check for NEWDOCPATH 
+# ------------------------------------------------------------------------------
+checkForNewDocPath() {
+  if [[ ! -d ${NEWDOCPATH} ]]; then
+    abort "NEWDOCPATH must be defined."
+  fi
+}
+
+# ------------------------------------------------------------------------------
+# check for valid command line flags.   
+# ------------------------------------------------------------------------------
+checkForValidFlags() {
+  if [[ $dirFlag == 0 ]]; then
+    abort "--dir option must be used."
+  fi
+
+  if [[ $titleFlag == 1 ]] && [[ $fileFlag == 0 ]]; then
+    abort "--file option must be used when --title is used."
+  fi
+}
+
+# ------------------------------------------------------------------------------
 # Create document directories from your current directory.
 # ------------------------------------------------------------------------------
 createDocDir() {
-  subDir=''"${cwd}"'/'"${dir}"''
-  msg "Creating document directory ${subDir}"
-  mkdir -p -v ${subDir}
+  if [[ $dirFlag == 1 ]]; then
+    subDir=''"${cwd}"'/'"${dir}"''
+    msg "Creating document directory ${subDir}"
+    mkdir -p -v ${subDir}
+  fi
 }
 
 # ------------------------------------------------------------------------------
 # Create the data directory that is needed for document data. 
 # ------------------------------------------------------------------------------
 createDataDir() {
-  dataDir=''"${subDir}"/data''
-  msg "Creating document data directory ${dataDir}"
-  mkdir -p -v ${dataDir}
+  if [[ $dirFlag == 1 ]]; then
+    dataDir=''"${subDir}"/data''
+    msg "Creating document data directory ${dataDir}"
+    mkdir -p -v ${dataDir}
+  fi
 } 
 
 # ------------------------------------------------------------------------------
 # Create the shared data directory when needed to share LaTeX files.
 # ------------------------------------------------------------------------------
 createSharedDataDir() {
-  if [ $shareFlag == 1 ]; then
+  if [[ $shareFlag == 1 ]]; then
     sharedDataDir=''"${subDir%/*}"/shared/data''
     msg "Creating project shared data directory ${sharedDataDir}"
     mkdir -p -v ${sharedDataDir}
@@ -163,74 +204,97 @@ createSharedDataDir() {
 }
 
 # ------------------------------------------------------------------------------
+# Create the test-output directory when the Test Output Factory is requested. 
+# ------------------------------------------------------------------------------
+createTOFDir() {
+  if [[ $tofFlag == 1 ]]; then
+    tofDir="${subDir}/test-output"
+    msg "Creating Test Output Factory ${tofDir}"
+    mkdir -p -v ${tofDir}
+  fi
+}
+
+# ------------------------------------------------------------------------------
 # toUpper docNbr for the title only.
 # ------------------------------------------------------------------------------
 toUpperdocNbr() {
-  docNbr=`echo "${fileName}" | tr '[:lower:]' '[:upper:]'`
+  docNbr=`echo "${fileName}" | tr '[[:lower:]]' '[[:upper:]]'`
 }
 
 # ------------------------------------------------------------------------------
 # Sed is used to replace markers in the tex file.
 # ------------------------------------------------------------------------------
 copyTexFile() {
-  msg "Copying primary LaTeX file ${subDir}/${fileName}.tex"
-  sed -e 's/%docTitle/'"${title}"'/' \
-      -e 's/%\\input/\\input/'  data/nnnnnn.txt > ${subDir}/${fileName}.tex
+  if [[ $fileFlag == 1 ]]; then
+    msg "Copying primary LaTeX file ${subDir}/${fileName}.tex"
+    sed -e 's/%docTitle/'"${title}"'/' \
+        -e 's/%\\input/\\input/'  data/nnnnnn.txt > ${subDir}/${fileName}.tex
+  fi
 }
 
 # ------------------------------------------------------------------------------
 # Sed is used to replace markers in the texx builder file.
 # ------------------------------------------------------------------------------
 copyTexxBuilderFile() {
-  msg "Copying docbld file ${subDir}/${fileName}.texx"
-  sed -e 's/%docNbr/'"${fileName}"'/' \
-         data/nnnnnn.txtt > ${subDir}/${fileName}.texx
+  if [[ $fileFlag == 1 ]]; then
+    msg "Copying docbld file ${subDir}/${fileName}.texx"
+    sed -e 's/%docNbr/'"${fileName}"'/' \
+          data/nnnnnn.txtt > ${subDir}/${fileName}.texx
+  fi
 }
 
 # ------------------------------------------------------------------------------
 # A boilerplate document change summary is copied to the document directory.
 # ------------------------------------------------------------------------------
 copyChangeSummary() {
-  msg "Copying change summary file ${subDir}/change-summary.texx"
-  cp -v data/change-summary.tex ${subDir}/change-summary.tex
+  if [[ $fileFlag == 1 ]]; then
+    msg "Copying change summary file ${subDir}/change-summary.texx"
+    cp -v data/change-summary.tex ${subDir}/change-summary.tex
+  fi
 }
 
 # ------------------------------------------------------------------------------
 # A boilerplate document signature is copied to the document directory.
 # ------------------------------------------------------------------------------
 copySignatures() {
-  msg "Copying signature file ${subDir}/signatures.tex"
-  cp -v data/signatures.tex ${subDir}/signatures.tex
+  if [[ $fileFlag == 1 ]]; then
+    msg "Copying signature file ${subDir}/signatures.tex"
+    cp -v data/signatures.tex ${subDir}/signatures.tex
+  fi
 }
 
 # ------------------------------------------------------------------------------
 # sed is used to replace markers in version.txt. 
 # ------------------------------------------------------------------------------
 copyVersion() {
-  msg "Copying version file ${dataDir}/${dataDir}.tex"
-  sed -e 's/%docNbr/'"${docNbr}"'/' data/version.txt > ${dataDir}/version.tex
+  if [[ $fileFlag == 1 ]]; then
+    msg "Copying version file ${dataDir}/${dataDir}.tex"
+    sed -e 's/%docNbr/'"${docNbr}"'/' data/version.txt > ${dataDir}/version.tex
+  fi
 }
 
 # ------------------------------------------------------------------------------
 # Copy files used by tlc-article to layout document to the data directory.
 # ------------------------------------------------------------------------------
 copyAdditionalLayout() {
-  msg "Copying additional layout file ${dataDir}/additional-layout.tex"
+  if [[ $fileFlag == 1 ]]; then
+    msg "Copying additional layout file ${dataDir}/additional-layout.tex"
 
-  if [ $shareFlag == 1 ]; then
-    cp -v data/additional-layout-shared.tex ${dataDir}/additional-layout.tex
+    if [[ $shareFlag == 1 ]]; then
+      cp -v data/additional-layout-shared.tex ${dataDir}/additional-layout.tex
 
-    # Don't overwrite an existing file.
-    if [ ! -f "${sharedDataDir}/additional-layout.tex" ]; then
-      msg "Copying shared additional layout file ${sharedDataDir}/additional-layout.tex"
-      sed -e 's/%dataDir/..\/shared\/data/'  \
-              data/additional-layout.txt > \
-              ${sharedDataDir}/additional-layout.tex
+      # Don't overwrite an existing file.
+      if [[ ! -f "${sharedDataDir}/additional-layout.tex" ]]; then
+        msg "Copying shared additional layout file ${sharedDataDir}/additional-layout.tex"
+        sed -e 's/%dataDir/..\/shared\/data/'  \
+                data/additional-layout.txt > \
+                ${sharedDataDir}/additional-layout.tex
+      fi
+
+    else
+      sed -e 's/%dataDir/data/' \
+              data/additional-layout.txt > ${dataDir}/additional-layout.tex
     fi
-
-  else
-    sed -e 's/%dataDir/data/' \
-            data/additional-layout.txt > ${dataDir}/additional-layout.tex
   fi
 }
 
@@ -239,17 +303,19 @@ copyAdditionalLayout() {
 # to the data directory.
 # ------------------------------------------------------------------------------
 copyHeaderFooter() {
-  msg "Copying header footer file ${dataDir}/header-footer.tex"
-  if [ $shareFlag == 1 ]; then
-    cp -v data/header-footer-shared.tex ${dataDir}/header-footer.tex
+  if [[ $fileFlag == 1 ]]; then
+    msg "Copying header footer file ${dataDir}/header-footer.tex"
+    if [[ $shareFlag == 1 ]]; then
+      cp -v data/header-footer-shared.tex ${dataDir}/header-footer.tex
 
-    # Don't overwrite an existing file.
-    if [ ! -f "${sharedDataDir}/header-footer.tex" ]; then
-      cp -v data/header-footer.tex ${sharedDataDir}/header-footer.tex
+      # Don't overwrite an existing file.
+      if [[ ! -f "${sharedDataDir}/header-footer.tex" ]]; then
+        cp -v data/header-footer.tex ${sharedDataDir}/header-footer.tex
+      fi
+
+    else
+      cp -v data/header-footer.tex ${dataDir}/header-footer.tex
     fi
-
-  else
-    cp -v data/header-footer.tex ${dataDir}/header-footer.tex
   fi
 }
 
@@ -257,15 +323,17 @@ copyHeaderFooter() {
 # Copy the file used to define \audoDocdir 
 # ------------------------------------------------------------------------------
 copyFindAutoDoc() {
-  if [ $shareFlag == 1 ]; then
-    # Don't overwrite an existing file.
-    if [ ! -f "${sharedDataDir}/find-autodoc.tex" ]; then
-      msg "Copying shared find autodoc file ${sharedDataDir}/find-autodoc.tex"
-      cp -v data/find-autodoc.tex ${sharedDataDir}/find-autodoc.tex
+  if [[ $fileFlag == 1 ]]; then
+    if [[ $shareFlag == 1 ]]; then
+      # Don't overwrite an existing file.
+      if [[ ! -f "${sharedDataDir}/find-autodoc.tex" ]]; then
+        msg "Copying shared find autodoc file ${sharedDataDir}/find-autodoc.tex"
+        cp -v data/find-autodoc.tex ${sharedDataDir}/find-autodoc.tex
+      fi
+    else
+      msg "Copying find autodoc file ${dataDir}/find-autodoc.tex"
+      cp -v data/find-autodoc.tex ${dataDir}/find-autodoc.tex
     fi
-  else
-    msg "Copying find autodoc file ${dataDir}/find-autodoc.tex"
-    cp -v data/find-autodoc.tex ${dataDir}/find-autodoc.tex
   fi
 }
 
@@ -273,27 +341,35 @@ copyFindAutoDoc() {
 # Copy document logo when requested. 
 # ------------------------------------------------------------------------------
 copyLogo() {
-  if [ $logoFlag == 1 ]; then
+  if [[ $logoFlag == 1 ]]; then
     msg "Copying logo file ${dataDir}/logo.png"
     cp -v data/logo.png ${dataDir}/logo.png
   fi
 }
 
 # ------------------------------------------------------------------------------
-# check for NEWDOCPATH 
+# Copy Test Output Factory when requested. 
 # ------------------------------------------------------------------------------
-checkForNewDocPath() {
-  if [ ! -d ${NEWDOCPATH} ]; then
-    msg "NEWDOCPATH [${NEWDOCPATH}] must be defined.  Aborting!"
-    exit
+copyTOF() {
+  if [[ $tofFlag == 1 ]]; then
+    msg "Copying Test Output Factory file ${tofDir}"
+    cp -v data/test-results.tex ${tofDir}/test-results.tex
   fi
+}
+
+# ------------------------------------------------------------------------------
+# Aborting this procedure. 
+# ------------------------------------------------------------------------------
+abort() {
+  msg "Aborting: ${1}"
+  exit
 }
 
 # ------------------------------------------------------------------------------
 # msg is used to format strings to the console. 
 # ------------------------------------------------------------------------------
 msg() {
-  echo ""
+  echo 
   echo $1
 }
 
