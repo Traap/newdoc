@@ -1,6 +1,6 @@
 ## newdoc - Seed a LaTeX document with standard content. 
 The **newdoc** repository simplifies initializing LaTeX documnets the meet
-minimum requirements defined by **autodoc, **docbld**, and **tlc-article**. 
+minimum requirements defined by **autodoc**, **docbld**, and **tlc-article**. 
 
 # Prerequisites 
 1. [autodoc](https://GitHub.com/Traap/autodoc.git)
