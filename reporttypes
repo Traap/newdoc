@@ -1,0 +1,17 @@
+# ------------------------------------------------------------------------------
+#  
+# ------------------------------------------------------------------------------
+dtName="stdTypeValTest"
+docTypes=(stdTypeVerTest stdTypeValTest stdTypeTestPlan stdTypeTestRecord stdTypeTestReport stdTypeUnitTest)
+
+for dt in ${docTypes[@]}; do
+  if [[ $dt == $dtName ]]; then
+    echo "$dt Yup";
+  else
+    echo "$dt Nope";
+  fi
+done
+
+exit
+
+
