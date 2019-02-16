@@ -1,8 +1,10 @@
 # ------------------------------------------------------------------------------
-#  
+# This bash stub is just a placholder to remind us the type of reports autodoc
+# supports.
 # ------------------------------------------------------------------------------
-dtName="stdTypeValTest"
-docTypes=(stdTypeVerTest stdTypeValTest stdTypeTestPlan stdTypeTestRecord stdTypeTestReport stdTypeUnitTest)
+dtName="stdTestReportDoc"
+
+docTypes=(stdTestPlanDoc stdTestRecordDoc stdTestReportDoc stdToolTestDoc stdUnitTestDoc stdVerTestDoc)
 
 for dt in ${docTypes[@]}; do
   if [[ $dt == $dtName ]]; then
@@ -11,7 +13,3 @@ for dt in ${docTypes[@]}; do
     echo "$dt Nope";
   fi
 done
-
-exit
-
-
