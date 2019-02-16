@@ -1,4 +1,7 @@
 % ------------------------------------------------------------------------------
-% Hook Amber's Test Output Factory Test Results file. 
-\input{../test-output/test-results.tex}
-
+% Hook Amber's Test Output Factory Test Results file.
+\newcommand{\trFile}{../test-output/test-results.tex}
+\IfFileExists{\trFile}%
+             {\input{\trFile}}%
+             {\paragraph{Amber has not been run.}}%
+% ------------------------------------------------------------------------------
