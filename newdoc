@@ -75,19 +75,20 @@ parseOptions() {
         --file*)
           fileName="${var#*=}"
           fileFlag=1
+          shift
           ;;
         --help)
           helpFlag=1
-          /;;
+          ;;
         --logo*)
           logoFlag=1
           ;;
         --title*)
           title="${var#*=}"
           titleFlag=1
+          shift
           ;;
         --tof*)
-          tof="${var#*=}"
           tofFlag=1
           ;;
         --share*)
