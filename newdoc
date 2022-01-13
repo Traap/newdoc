@@ -1,9 +1,9 @@
 #!/bin/bash
-# ------------------------------------------------------------------------------
+# {{{ Script Overview and program flags.
+#
 # This script creates the scaffolding for a new LaTeX document that is
 # compatible with docbld.
-# ------------------------------------------------------------------------------
-
+#
 # These flags enable optional features.
 
 dirFlag=0;         # Create a directory when true.
@@ -14,9 +14,20 @@ shareFlag=0;       # Use shared document header and footer when true.
 tofFlag=0;         # Create a test results hook into Test Output Factory.
 titleFlag=0;       # Document title to use when true.
 
-# ------------------------------------------------------------------------------
-# Orchestrate the show.
-# ------------------------------------------------------------------------------
+docTypes=( \
+  stdTestPlanDoc \
+  stdTestRecordDoc \
+  stdTestReportDoc \
+  stdToolTestDoc \
+  stdUnitTestDoc \
+  stdVerTestDoc \
+)
+
+docType=''
+
+# -------------------------------------------------------------------------- }}}
+# {{{ main: Orchestrate the show.
+
 main() {
   parseOptions "$@"
   if [[ $helpFlag == 1 ]]; then
@@ -26,9 +37,9 @@ main() {
   fi
 }
 
-# ------------------------------------------------------------------------------
-# Show the help text for the script and then terminate execution.
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ showHelp: Show the help text for the script and then terminate execution.
+
 showHelp() {
    echo "Run newdoc to create the scaffolding for a new LaTeX document "
    echo "that is compatible with autodoc, docbld, and tlc-article."
@@ -39,25 +50,29 @@ showHelp() {
    echo "  --dir=path/to/dir              Directory to create."
    echo "  --file=fileName                File to create."
    echo "  --title='Your Document Title'  Document title to use."
-   echo 
+   echo
+   echo "  --type=(one of:)" ${docTypes[@]}
+   echo
    echo "  --logo                         Seed document a logo."
    echo "  --share                        Use shared header and footer data."
    echo
-   echo "  --tof                          Hook into Test Output Factory." 
+   echo "  --tof                          Hook into Test Output Factory."
    echo ""
    echo "  --help                         Display this help message."
    echo ""
    checkForNewDocPath
 }
 
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ parseOptions: Parse command line.
+#
 # Parse the command line options.   If the help flag is encountered, or if the
 # command line option is not recognized, then display the help information and
 # terminate gracefully.
 #
 # Arguments:
 # A non-empty array containing the command line options.
-# ------------------------------------------------------------------------------
+
 parseOptions() {
   # Iterate through the list of options.
   if [[ $# -eq 0 ]]; then
@@ -82,6 +97,7 @@ parseOptions() {
           ;;
         --logo*)
           logoFlag=1
+          shift
           ;;
         --title*)
           title="${var#*=}"
@@ -90,9 +106,15 @@ parseOptions() {
           ;;
         --tof*)
           tofFlag=1
+          shift
+          ;;
+        --type*)
+          checkDocType "${var#*=}"
+          shift
           ;;
         --share*)
           shareFlag=1
+          shift
           ;;
         *)
           echo "Unknown argument $var"
@@ -105,14 +127,16 @@ parseOptions() {
   fi
 }
 
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ makedoc: setup scaffolding
+
 # makeDoc orchestrates setting up the scaffolding needed for a new LaTeX
 # document that is compliant with tlc-article, autodoc, docbld, and amber.
 #
 # This function is the workflow.  Each function called determines whether or not
-# it has work.  Each function will setup environment variables that other 
+# it has work.  Each function will setup environment variables that other
 # functions may use.
-# ------------------------------------------------------------------------------
+
 makeDoc() {
   # NEWDOCPATH must be defined.
   checkForNewDocPath
@@ -124,13 +148,13 @@ makeDoc() {
   # Move to NEWDOCPATH
   cd ${NEWDOCPATH}
 
-  # Create document directories. 
+  # Create document directories.
   createDocDir
   createDataDir
   createSharedDataDir
   createTOFDir
 
-  # Uppercase the document number.  
+  # Uppercase the document number.
   toUpperdocNbr
 
   # Copy files to the new document location.
@@ -149,18 +173,36 @@ makeDoc() {
   cd ${cwd}
 }
 
-# ------------------------------------------------------------------------------
-# check for NEWDOCPATH 
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ checkDocType: validate document type entered.
+
+# A valid document type will always be returned.
+checkDocType() {
+  for dt in ${docTypes[@]}; do
+    if [[ $dt == $1 ]]; then
+      docType=$dt
+      break;
+    fi
+  done
+  if [[ $docType == '' ]]; then
+    echo "Document type" $1 " is not supported."
+    echo "Use one of" ${docTypes[@]}
+    exit
+  fi
+}
+
+# -------------------------------------------------------------------------- }}}
+# {{{ checkForNewDocPath: check for NEWDOCPATH
+
 checkForNewDocPath() {
   if [[ ! -d ${NEWDOCPATH} ]]; then
     abort "NEWDOCPATH must be defined."
   fi
 }
 
-# ------------------------------------------------------------------------------
-# check for valid command line flags.   
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ checkForValidFlags: check for valid command line flags.
+
 checkForValidFlags() {
   if [[ $dirFlag == 0 ]]; then
     abort "--dir option must be used."
@@ -171,9 +213,9 @@ checkForValidFlags() {
   fi
 }
 
-# ------------------------------------------------------------------------------
-# Create document directories from your current directory.
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ createDocDir: Create document directories from your current directory.
+
 createDocDir() {
   if [[ $dirFlag == 1 ]]; then
     subDir=''"${cwd}"'/'"${dir}"''
@@ -182,20 +224,21 @@ createDocDir() {
   fi
 }
 
-# ------------------------------------------------------------------------------
-# Create the data directory that is needed for document data. 
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ createDataDir: Create the data directory that is needed for document data.
+
 createDataDir() {
   if [[ $dirFlag == 1 ]]; then
     dataDir=''"${subDir}"/data''
     msg "Creating document data directory ${dataDir}"
     mkdir -p -v ${dataDir}
   fi
-} 
+}
 
-# ------------------------------------------------------------------------------
-# Create the shared data directory when needed to share LaTeX files.
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ createSharedDataDir: Create the shared data directory when needed to share
+# LaTeX files.
+
 createSharedDataDir() {
   if [[ $shareFlag == 1 ]]; then
     sharedDataDir=''"${subDir%/*}"/shared/data''
@@ -204,9 +247,10 @@ createSharedDataDir() {
   fi
 }
 
-# ------------------------------------------------------------------------------
-# Create the test-output directory when the Test Output Factory is requested. 
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ createTODir: Create the test-output directory when the Test Output Factory
+# is requested.
+
 createTOFDir() {
   if [[ $tofFlag == 1 ]]; then
     tofDir="${subDir}/test-output"
@@ -215,27 +259,28 @@ createTOFDir() {
   fi
 }
 
-# ------------------------------------------------------------------------------
-# toUpper docNbr for the title only.
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ toUpperdocNbr: toUpper docNbr for the title only.
+
 toUpperdocNbr() {
   docNbr=`echo "${fileName}" | tr '[[:lower:]]' '[[:upper:]]'`
 }
 
 # ------------------------------------------------------------------------------
-# Sed is used to replace markers in the tex file.
-# ------------------------------------------------------------------------------
+# {{{ copyTextFile: Use sed to replace markers in the tex file.
+
 copyTexFile() {
   if [[ $fileFlag == 1 ]]; then
     msg "Copying primary LaTeX file ${subDir}/${fileName}.tex"
-    sed -e 's/%docTitle/'"${title}"'/' \
+    sed -e 's/%docType/'"${docType}"'/' \
+        -e 's/%docTitle/'"${title}"'/' \
         -e 's/%\\input/\\input/'  data/nnnnnn.txt > ${subDir}/${fileName}.tex
   fi
 }
 
-# ------------------------------------------------------------------------------
-# Sed is used to replace markers in the texx builder file.
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ copyTexxBuilderFile: Use sed to replace markers in the texx builder file.
+
 copyTexxBuilderFile() {
   if [[ $fileFlag == 1 ]]; then
     msg "Copying docbld file ${subDir}/${fileName}.texx"
@@ -244,9 +289,10 @@ copyTexxBuilderFile() {
   fi
 }
 
-# ------------------------------------------------------------------------------
-# A boilerplate document change summary is copied to the document directory.
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ copyChangeSummary: A boilerplate document change summary is copied to the
+#     document directory.
+
 copyChangeSummary() {
   if [[ $fileFlag == 1 ]]; then
     msg "Copying change summary file ${subDir}/change-summary.texx"
@@ -254,9 +300,10 @@ copyChangeSummary() {
   fi
 }
 
-# ------------------------------------------------------------------------------
-# A boilerplate document signature is copied to the document directory.
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ copySignatures: A boilerplate document signature is copied to the document
+#     directory.
+
 copySignatures() {
   if [[ $fileFlag == 1 ]]; then
     msg "Copying signature file ${subDir}/signatures.tex"
@@ -264,9 +311,9 @@ copySignatures() {
   fi
 }
 
-# ------------------------------------------------------------------------------
-# sed is used to replace markers in version.txt. 
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ copyVerion: Use sed to replace markers in version.txt.
+
 copyVersion() {
   if [[ $fileFlag == 1 ]]; then
     msg "Copying version file ${dataDir}/${dataDir}.tex"
@@ -274,9 +321,10 @@ copyVersion() {
   fi
 }
 
-# ------------------------------------------------------------------------------
-# Copy files used by tlc-article to layout document to the data directory.
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ copyAdditionalLayout: Copy files used by tlc-article to layout document to
+#     the data directory.
+
 copyAdditionalLayout() {
   if [[ $fileFlag == 1 ]]; then
     msg "Copying additional layout file ${dataDir}/additional-layout.tex"
@@ -299,10 +347,10 @@ copyAdditionalLayout() {
   fi
 }
 
-# ------------------------------------------------------------------------------
-# Copy files used by tlc-article to layout header and document footer
-# to the data directory.
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ copyHeaderFooter: Copy files used by tlc-article to layout header and
+#     document footer to the data directory.
+
 copyHeaderFooter() {
   if [[ $fileFlag == 1 ]]; then
     msg "Copying header footer file ${dataDir}/header-footer.tex"
@@ -320,9 +368,9 @@ copyHeaderFooter() {
   fi
 }
 
-# ------------------------------------------------------------------------------
-# Copy the file used to define \audoDocdir 
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ copyfineAutoDoc: Copy the file used to define \audoDocdir
+
 copyFindAutoDoc() {
   if [[ $fileFlag == 1 ]]; then
     if [[ $shareFlag == 1 ]]; then
@@ -338,9 +386,9 @@ copyFindAutoDoc() {
   fi
 }
 
-# ------------------------------------------------------------------------------
-# Copy document logo when requested. 
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ copyLogo: Copy document logo when requested.
+
 copyLogo() {
   if [[ $logoFlag == 1 ]]; then
     msg "Copying logo file ${dataDir}/logo.png"
@@ -348,9 +396,9 @@ copyLogo() {
   fi
 }
 
-# ------------------------------------------------------------------------------
-# Copy Test Output Factory when requested. 
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# copyTOF: Copy Test Output Factory when requested.
+
 copyTOF() {
   if [[ $tofFlag == 1 ]]; then
     msg "Copying Test Output Factory file ${tofDir}"
@@ -358,23 +406,25 @@ copyTOF() {
   fi
 }
 
-# ------------------------------------------------------------------------------
-# Aborting this procedure. 
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ abort: Aborting this procedure.
+
 abort() {
   msg "Aborting: ${1}"
   exit
 }
 
-# ------------------------------------------------------------------------------
-# msg is used to format strings to the console. 
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ msg: msg is used to format strings to the console.
+
 msg() {
-  echo 
+  echo
   echo $1
 }
 
-# ------------------------------------------------------------------------------
-# Kick start this script.
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------- }}}
+# {{{ Kick start this script.
+
 main "$@"
+
+# -------------------------------------------------------------------------- }}}

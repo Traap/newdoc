@@ -2,14 +2,19 @@
 # This bash stub is just a placholder to remind us the type of reports autodoc
 # supports.
 # ------------------------------------------------------------------------------
-dtName="stdTestReportDoc"
 
 docTypes=(stdTestPlanDoc stdTestRecordDoc stdTestReportDoc stdToolTestDoc stdUnitTestDoc stdVerTestDoc)
 
+found=0
 for dt in ${docTypes[@]}; do
-  if [[ $dt == $dtName ]]; then
-    echo "$dt Yup";
-  else
-    echo "$dt Nope";
+  if [[ $dt == $1 ]]; then
+    found=1
+    break
   fi
 done
+
+if [[ $found = 0 ]]; then
+  echo "Building document type" $1 "is not supported."
+else
+  echo "Building document type" $1"."
+fi
