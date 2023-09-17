@@ -165,7 +165,6 @@ makeDoc() {
   copyVersion
   copyAdditionalLayout
   copyHeaderFooter
-  copyFindAutoDoc
   copyLogo
   copyTOF
 
@@ -364,24 +363,6 @@ copyHeaderFooter() {
 
     else
       cp -v data/header-footer.tex ${dataDir}/header-footer.tex
-    fi
-  fi
-}
-
-# -------------------------------------------------------------------------- }}}
-# {{{ copyfineAutoDoc: Copy the file used to define \audoDocdir
-
-copyFindAutoDoc() {
-  if [[ $fileFlag == 1 ]]; then
-    if [[ $shareFlag == 1 ]]; then
-      # Don't overwrite an existing file.
-      if [[ ! -f "${sharedDataDir}/find-autodoc.tex" ]]; then
-        msg "Copying shared find autodoc file ${sharedDataDir}/find-autodoc.tex"
-        cp -v data/find-autodoc.tex ${sharedDataDir}/find-autodoc.tex
-      fi
-    else
-      msg "Copying find autodoc file ${dataDir}/find-autodoc.tex"
-      cp -v data/find-autodoc.tex ${dataDir}/find-autodoc.tex
     fi
   fi
 }
