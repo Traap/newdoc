@@ -14,14 +14,7 @@ shareFlag=0;       # Use shared document header and footer when true.
 tofFlag=0;         # Create a test results hook into Test Output Factory.
 titleFlag=0;       # Document title to use when true.
 
-docTypes=( \
-  stdTestPlanDoc \
-  stdTestRecordDoc \
-  stdTestReportDoc \
-  stdToolTestDoc \
-  stdUnitTestDoc \
-  stdVerTestDoc \
-)
+source "$NEWDOCPATH/document_types"
 
 docType=''
 
@@ -51,7 +44,7 @@ showHelp() {
    echo "  --file=fileName                File to create."
    echo "  --title='Your Document Title'  Document title to use."
    echo
-   echo "  --type=(one of:)" ${docTypes[@]}
+   echo "  --type=(one of:) ${docTypes[@]}"
    echo
    echo "  --logo                         Seed document a logo."
    echo "  --share                        Use shared header and footer data."

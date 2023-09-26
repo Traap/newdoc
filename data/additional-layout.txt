@@ -1,12 +1,15 @@
 % ------------------------------------------------------------------------------
+% You must define UseAutodocGlossaries prior to hooking into autodoc.
+\newboolean{UseAutodocGlossaries}\setboolean{UseAutodocGlossaries}{true}%
+
+% ------------------------------------------------------------------------------
 % Your system environment variable AUTODOCPATH MUST be declared and you MUST
 % define autodocDir first.  These two mandatory requirements must be met so
 % that your customizations work.
-\input{%dataDir/find-autodoc.tex}
-\tlcGetEnv[\autodocDir]{AUTODOCPATH}
+\tlcGetEnvironmentVariable[\autodocDir]{AUTODOCPATH}
 
 % ------------------------------------------------------------------------------
-% Hook into automation documentation additional layout. 
+% Hook into automation documentation additional layout.
 \input{\autodocDir/boilerplate/data/additional-layout.tex}
 
 % ------------------------------------------------------------------------------
@@ -15,4 +18,3 @@
 
 % ------------------------------------------------------------------------------
 % Your additional layout, packages, etc. are declared now.
-% ------------------------------------------------------------------------------ 

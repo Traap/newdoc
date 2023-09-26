@@ -1,0 +1,17 @@
+#!/bin/bash
+# {{{ List of supported autodoc document types.
+
+docTypes=(
+  "stdCodeReviewDoc"
+  "stdDesignReviewDoc"
+  "stdTechPlanDoc"
+  "stdTechReportDoc"
+  "stdTestPlanDoc"
+  "stdTestRecordDoc"
+  "stdTestReportDoc"
+  "stdToolTestDoc"
+  "stdUnitTestDoc"
+  "stdVerTestDoc"
+)
+
+# -------------------------------------------------------------------------- }}}
