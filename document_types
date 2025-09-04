@@ -12,6 +12,7 @@ docTypes=(
   "stdToolTestDoc"
   "stdUnitTestDoc"
   "stdVerTestDoc"
+  "stdDhfDoc"
 )
 
 # -------------------------------------------------------------------------- }}}
