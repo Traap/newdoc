@@ -240,8 +240,8 @@ createSharedDataDir() {
 }
 
 # -------------------------------------------------------------------------- }}}
-# {{{ createTODir: Create the test-output directory when the Test Output Factory
-# is requested.
+# {{{ createTODDir: Create the test-output directory when the Test Output
+# Factory is requested.
 
 createTOFDir() {
   if [[ $tofFlag == 1 ]]; then
