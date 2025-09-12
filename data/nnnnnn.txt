@@ -1,4 +1,7 @@
-\documentclass[10pt]{tlc-article}
-\begin{document}
-  \%docType{%docTitle}
-\end{document}
+\documentclass[10pt]{tlc-article}%
+\usepackage{newpxtext,newpxmath}%
+\usepackage{multirow}%
+\begin{document}%
+  \%docType{%docTitle}%
+  \printGlossaries%
+\end{document}%
