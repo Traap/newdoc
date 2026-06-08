@@ -1,404 +1,292 @@
-#!/bin/bash
-# {{{ Script Overview and program flags.
-#
-# This script creates the scaffolding for a new LaTeX document that is
-# compatible with docbld.
-#
-# These flags enable optional features.
+#!/usr/bin/env ruby
+# frozen_string_literal: true
 
-dirFlag=0;         # Create a directory when true.
-fileFlag=0;        # Create file when true.
-helpFlag=1;        # Show help.
-logoFlag=0;        # Copy a logo when requested.
-shareFlag=0;       # Use shared document header and footer when true.
-tofFlag=0;         # Create a test results hook into Test Output Factory.
-titleFlag=0;       # Document title to use when true.
+require 'fileutils'
 
-source "$NEWDOCPATH/document_types"
+load File.expand_path('document_types', __dir__)
 
-docType=''
+# Create scaffolding for LaTeX documents that use autodoc, docbld, and
+# tlc-article.
+class NewDoc
+  attr_reader :argv, :cwd
 
-# -------------------------------------------------------------------------- }}}
-# {{{ main: Orchestrate the show.
+  def initialize(argv)
+    @argv = argv
+    @cwd = Dir.pwd
+    @dir_flag = false
+    @file_flag = false
+    @help_flag = argv.empty?
+    @logo_flag = false
+    @share_flag = false
+    @tof_flag = false
+    @title_flag = false
+    @doc_type = ''
+  end
 
-main() {
-  parseOptions "$@"
-  if [[ $helpFlag == 1 ]]; then
-    showHelp
-  else
-    makeDoc
-  fi
-}
+  def run
+    parse_options
+    return show_help if @help_flag
 
-# -------------------------------------------------------------------------- }}}
-# {{{ showHelp: Show the help text for the script and then terminate execution.
+    make_doc
+  end
 
-showHelp() {
-   echo "Run newdoc to create the scaffolding for a new LaTeX document "
-   echo "that is compatible with autodoc, docbld, and tlc-article."
-   echo
-   echo "Usage: newdoc -dir= [other options]"
-   echo
-   echo "OPTIONS"
-   echo "  --dir=path/to/dir              Directory to create."
-   echo "  --file=fileName                File to create."
-   echo "  --title='Your Document Title'  Document title to use."
-   echo
-   echo "  --type=(one of:) ${docTypes[@]}"
-   echo
-   echo "  --logo                         Seed document a logo."
-   echo "  --share                        Use shared header and footer data."
-   echo
-   echo "  --tof                          Hook into Test Output Factory."
-   echo ""
-   echo "  --help                         Display this help message."
-   echo ""
-   checkForNewDocPath
-}
+  private
 
-# -------------------------------------------------------------------------- }}}
-# {{{ parseOptions: Parse command line.
-#
-# Parse the command line options.   If the help flag is encountered, or if the
-# command line option is not recognized, then display the help information and
-# terminate gracefully.
-#
-# Arguments:
-# A non-empty array containing the command line options.
+  def parse_options
+    argv.each do |argument|
+      case argument
+      when /\A--dir=/
+        @dir = argument.delete_prefix('--dir=')
+        @dir_flag = true
+      when /\A--file=/
+        @file_name = argument.delete_prefix('--file=')
+        @file_flag = true
+      when '--help'
+        @help_flag = true
+      when '--logo'
+        @logo_flag = true
+      when /\A--title=/
+        @title = argument.delete_prefix('--title=')
+        @title_flag = true
+      when '--tof'
+        @tof_flag = true
+      when /\A--type=/
+        check_doc_type(argument.delete_prefix('--type='))
+      when '--shared'
+        @share_flag = true
+      else
+        puts "Unknown argument #{argument}"
+        puts
+        @help_flag = true
+      end
+    end
+  end
 
-parseOptions() {
-  # Iterate through the list of options.
-  if [[ $# -eq 0 ]]; then
-    helpFlag=1
-  else
-    helpFlag=0
-    for var in "$@"
-    do
-      case $var in
-        --dir*)
-          dir="${var#*=}"
-          dirFlag=1
-          shift
-          ;;
-        --file*)
-          fileName="${var#*=}"
-          fileFlag=1
-          shift
-          ;;
-        --help)
-          helpFlag=1
-          ;;
-        --logo*)
-          logoFlag=1
-          shift
-          ;;
-        --title*)
-          title="${var#*=}"
-          titleFlag=1
-          shift
-          ;;
-        --tof*)
-          tofFlag=1
-          shift
-          ;;
-        --type*)
-          checkDocType "${var#*=}"
-          shift
-          ;;
-        --share*)
-          shareFlag=1
-          shift
-          ;;
-        *)
-          echo "Unknown argument $var"
-          echo
-          helpFlag=1
-          ;;
-      esac
-      shift
-    done
-  fi
-}
+  def show_help
+    puts 'Run newdoc to create the scaffolding for a new LaTeX document'
+    puts 'that is compatible with autodoc, docbld, and tlc-article.'
+    puts
+    puts 'Usage: newdoc --dir=path/to/dir [other options]'
+    puts
+    puts 'OPTIONS'
+    puts '  --dir=path/to/dir              Directory to create.'
+    puts '  --file=fileName                File to create.'
+    puts "  --title='Your Document Title'  Document title to use."
+    puts
+    puts "  --type=(one of:) #{DOCUMENT_TYPES.join(' ')}"
+    puts
+    puts '  --logo                         Seed document with a logo.'
+    puts '  --shared                       Use shared header and footer data.'
+    puts
+    puts '  --tof                          Hook into Test Output Factory.'
+    puts
+    puts '  --help                         Display this help message.'
+    puts
+    check_for_newdoc_path
+  end
 
-# -------------------------------------------------------------------------- }}}
-# {{{ makedoc: setup scaffolding
+  def make_doc
+    check_for_newdoc_path
+    check_for_valid_flags
 
-# makeDoc orchestrates setting up the scaffolding needed for a new LaTeX
-# document that is compliant with tlc-article, autodoc, docbld, and amber.
-#
-# This function is the workflow.  Each function called determines whether or not
-# it has work.  Each function will setup environment variables that other
-# functions may use.
+    Dir.chdir(newdoc_path) do
+      create_doc_dir
+      create_data_dir
+      create_shared_data_dir
+      create_tof_dir
+      set_document_number
+      copy_tex_file
+      copy_texx_builder_file
+      copy_change_summary
+      copy_signatures
+      copy_version
+      copy_additional_layout
+      copy_header_footer
+      copy_logo
+      copy_tof
+    end
+  end
 
-makeDoc() {
-  # NEWDOCPATH must be defined.
-  checkForNewDocPath
-  checkForValidFlags
+  def check_doc_type(candidate)
+    return @doc_type = candidate if DOCUMENT_TYPES.include?(candidate)
 
-  # Save current working directory.
-  cwd=$(pwd)
+    puts "Document type #{candidate} is not supported."
+    puts "Use one of #{DOCUMENT_TYPES.join(' ')}"
+    exit 1
+  end
 
-  # Move to NEWDOCPATH
-  cd ${NEWDOCPATH}
+  def check_for_newdoc_path
+    fail!('NEWDOCPATH must be defined.') unless newdoc_path && Dir.exist?(newdoc_path)
+  end
 
-  # Create document directories.
-  createDocDir
-  createDataDir
-  createSharedDataDir
-  createTOFDir
+  def check_for_valid_flags
+    fail!('--dir option must be used.') unless @dir_flag
+    fail!('--file option must be used when --title is used.') if @title_flag && !@file_flag
+  end
 
-  # Uppercase the document number.
-  toUpperdocNbr
+  def create_doc_dir
+    return unless @dir_flag
 
-  # Copy files to the new document location.
-  copyTexFile
-  copyTexxBuilderFile
-  copyChangeSummary
-  copySignatures
-  copyVersion
-  copyAdditionalLayout
-  copyHeaderFooter
-  copyLogo
-  copyTOF
+    @sub_dir = File.join(cwd, @dir)
+    msg("Creating document directory #{@sub_dir}")
+    FileUtils.mkdir_p(@sub_dir, verbose: true)
+  end
 
-  # Returned to saved working directory.
-  cd ${cwd}
-}
+  def create_data_dir
+    return unless @dir_flag
 
-# -------------------------------------------------------------------------- }}}
-# {{{ checkDocType: validate document type entered.
+    @data_dir = File.join(@sub_dir, 'data')
+    msg("Creating document data directory #{@data_dir}")
+    FileUtils.mkdir_p(@data_dir, verbose: true)
+  end
 
-# A valid document type will always be returned.
-checkDocType() {
-  for dt in ${docTypes[@]}; do
-    if [[ $dt == $1 ]]; then
-      docType=$dt
-      break;
-    fi
-  done
-  if [[ $docType == '' ]]; then
-    echo "Document type" $1 " is not supported."
-    echo "Use one of" ${docTypes[@]}
-    exit
-  fi
-}
+  def create_shared_data_dir
+    return unless @share_flag
 
-# -------------------------------------------------------------------------- }}}
-# {{{ checkForNewDocPath: check for NEWDOCPATH
+    @shared_data_dir = File.join(File.dirname(@sub_dir), 'shared', 'data')
+    msg("Creating project shared data directory #{@shared_data_dir}")
+    FileUtils.mkdir_p(@shared_data_dir, verbose: true)
+  end
 
-checkForNewDocPath() {
-  if [[ ! -d ${NEWDOCPATH} ]]; then
-    abort "NEWDOCPATH must be defined."
-  fi
-}
+  def create_tof_dir
+    return unless @tof_flag
 
-# -------------------------------------------------------------------------- }}}
-# {{{ checkForValidFlags: check for valid command line flags.
+    @tof_dir = File.join(@sub_dir, 'test-output')
+    msg("Creating Test Output Factory #{@tof_dir}")
+    FileUtils.mkdir_p(@tof_dir, verbose: true)
+  end
 
-checkForValidFlags() {
-  if [[ $dirFlag == 0 ]]; then
-    abort "--dir option must be used."
-  fi
+  def set_document_number
+    @doc_nbr = @file_name.to_s.upcase
+  end
 
-  if [[ $titleFlag == 1 ]] && [[ $fileFlag == 0 ]]; then
-    abort "--file option must be used when --title is used."
-  fi
-}
+  def copy_tex_file
+    return unless @file_flag
 
-# -------------------------------------------------------------------------- }}}
-# {{{ createDocDir: Create document directories from your current directory.
+    destination = File.join(@sub_dir, "#{@file_name}.tex")
+    msg("Copying primary LaTeX file #{destination}")
+    write_template('data/nnnnnn.txt', destination,
+                   '%docType' => @doc_type,
+                   '%docTitle' => @title.to_s,
+                   '%\input' => '\input')
+  end
 
-createDocDir() {
-  if [[ $dirFlag == 1 ]]; then
-    subDir=''"${cwd}"'/'"${dir}"''
-    msg "Creating document directory ${subDir}"
-    mkdir -p -v ${subDir}
-  fi
-}
+  def copy_texx_builder_file
+    return unless @file_flag
 
-# -------------------------------------------------------------------------- }}}
-# {{{ createDataDir: Create the data directory that is needed for document data.
+    destination = File.join(@sub_dir, "#{@file_name}.texx")
+    msg("Copying docbld file #{destination}")
+    write_template('data/nnnnnn.txtt', destination, '%docNbr' => @file_name)
+  end
 
-createDataDir() {
-  if [[ $dirFlag == 1 ]]; then
-    dataDir=''"${subDir}"/data''
-    msg "Creating document data directory ${dataDir}"
-    mkdir -p -v ${dataDir}
-  fi
-}
+  def copy_change_summary
+    return unless @file_flag
 
-# -------------------------------------------------------------------------- }}}
-# {{{ createSharedDataDir: Create the shared data directory when needed to share
-# LaTeX files.
+    destination = File.join(@sub_dir, 'change-summary.tex')
+    msg("Copying change summary file #{destination}")
+    copy_file('data/change-summary.tex', destination)
+  end
 
-createSharedDataDir() {
-  if [[ $shareFlag == 1 ]]; then
-    sharedDataDir=''"${subDir%/*}"/shared/data''
-    msg "Creating project shared data directory ${sharedDataDir}"
-    mkdir -p -v ${sharedDataDir}
-  fi
-}
+  def copy_signatures
+    return unless @file_flag
 
-# -------------------------------------------------------------------------- }}}
-# {{{ createTODDir: Create the test-output directory when the Test Output
-# Factory is requested.
+    destination = File.join(@sub_dir, 'signatures.tex')
+    msg("Copying signature file #{destination}")
+    copy_file('data/signatures.tex', destination)
+  end
 
-createTOFDir() {
-  if [[ $tofFlag == 1 ]]; then
-    tofDir="${subDir}/test-output"
-    msg "Creating Test Output Factory ${tofDir}"
-    mkdir -p -v ${tofDir}
-  fi
-}
+  def copy_version
+    return unless @file_flag
 
-# -------------------------------------------------------------------------- }}}
-# {{{ toUpperdocNbr: toUpper docNbr for the title only.
+    destination = File.join(@data_dir, 'version.tex')
+    msg("Copying version file #{destination}")
+    write_template('data/version.txt', destination, '%docNbr' => @doc_nbr)
+  end
 
-toUpperdocNbr() {
-  docNbr=`echo "${fileName}" | tr '[[:lower:]]' '[[:upper:]]'`
-}
+  def copy_additional_layout
+    return unless @file_flag
 
-# ------------------------------------------------------------------------------
-# {{{ copyTextFile: Use sed to replace markers in the tex file.
+    destination = File.join(@data_dir, 'additional-layout.tex')
+    msg("Copying additional layout file #{destination}")
 
-copyTexFile() {
-  if [[ $fileFlag == 1 ]]; then
-    msg "Copying primary LaTeX file ${subDir}/${fileName}.tex"
-    sed -e 's/%docType/'"${docType}"'/' \
-        -e 's/%docTitle/'"${title}"'/' \
-        -e 's/%\\input/\\input/'  data/nnnnnn.txt > ${subDir}/${fileName}.tex
-  fi
-}
-
-# -------------------------------------------------------------------------- }}}
-# {{{ copyTexxBuilderFile: Use sed to replace markers in the texx builder file.
-
-copyTexxBuilderFile() {
-  if [[ $fileFlag == 1 ]]; then
-    msg "Copying docbld file ${subDir}/${fileName}.texx"
-    sed -e 's/%docNbr/'"${fileName}"'/' \
-          data/nnnnnn.txtt > ${subDir}/${fileName}.texx
-  fi
-}
-
-# -------------------------------------------------------------------------- }}}
-# {{{ copyChangeSummary: A boilerplate document change summary is copied to the
-#     document directory.
-
-copyChangeSummary() {
-  if [[ $fileFlag == 1 ]]; then
-    msg "Copying change summary file ${subDir}/change-summary.texx"
-    cp -v data/change-summary.tex ${subDir}/change-summary.tex
-  fi
-}
-
-# -------------------------------------------------------------------------- }}}
-# {{{ copySignatures: A boilerplate document signature is copied to the document
-#     directory.
-
-copySignatures() {
-  if [[ $fileFlag == 1 ]]; then
-    msg "Copying signature file ${subDir}/signatures.tex"
-    cp -v data/signatures.tex ${subDir}/signatures.tex
-  fi
-}
-
-# -------------------------------------------------------------------------- }}}
-# {{{ copyVerion: Use sed to replace markers in version.txt.
-
-copyVersion() {
-  if [[ $fileFlag == 1 ]]; then
-    msg "Copying version file ${dataDir}/${dataDir}.tex"
-    sed -e 's/%docNbr/'"${docNbr}"'/' data/version.txt > ${dataDir}/version.tex
-  fi
-}
-
-# -------------------------------------------------------------------------- }}}
-# {{{ copyAdditionalLayout: Copy files used by tlc-article to layout document to
-#     the data directory.
-
-copyAdditionalLayout() {
-  if [[ $fileFlag == 1 ]]; then
-    msg "Copying additional layout file ${dataDir}/additional-layout.tex"
-
-    if [[ $shareFlag == 1 ]]; then
-      cp -v data/additional-layout-shared.tex ${dataDir}/additional-layout.tex
-
-      # Don't overwrite an existing file.
-      if [[ ! -f "${sharedDataDir}/additional-layout.tex" ]]; then
-        msg "Copying shared additional layout file ${sharedDataDir}/additional-layout.tex"
-        sed -e 's/%dataDir/..\/shared\/data/'  \
-                data/additional-layout.txt > \
-                ${sharedDataDir}/additional-layout.tex
-      fi
-
+    if @share_flag
+      copy_file('data/additional-layout-shared.tex', destination)
+      copy_shared_additional_layout
     else
-      sed -e 's/%dataDir/data/' \
-              data/additional-layout.txt > ${dataDir}/additional-layout.tex
-    fi
-  fi
-}
+      write_template('data/additional-layout.txt', destination, '%dataDir' => 'data')
+    end
+  end
 
-# -------------------------------------------------------------------------- }}}
-# {{{ copyHeaderFooter: Copy files used by tlc-article to layout header and
-#     document footer to the data directory.
+  def copy_shared_additional_layout
+    destination = File.join(@shared_data_dir, 'additional-layout.tex')
+    return if File.exist?(destination)
 
-copyHeaderFooter() {
-  if [[ $fileFlag == 1 ]]; then
-    msg "Copying header footer file ${dataDir}/header-footer.tex"
-    if [[ $shareFlag == 1 ]]; then
-      cp -v data/header-footer-shared.tex ${dataDir}/header-footer.tex
+    msg("Copying shared additional layout file #{destination}")
+    write_template('data/additional-layout.txt', destination, '%dataDir' => '../shared/data')
+  end
 
-      # Don't overwrite an existing file.
-      if [[ ! -f "${sharedDataDir}/header-footer.tex" ]]; then
-        cp -v data/header-footer.tex ${sharedDataDir}/header-footer.tex
-      fi
+  def copy_header_footer
+    return unless @file_flag
 
+    destination = File.join(@data_dir, 'header-footer.tex')
+    msg("Copying header footer file #{destination}")
+
+    if @share_flag
+      copy_file('data/header-footer-shared.tex', destination)
+      copy_shared_header_footer
     else
-      cp -v data/header-footer.tex ${dataDir}/header-footer.tex
-    fi
-  fi
-}
+      copy_file('data/header-footer.tex', destination)
+    end
+  end
 
-# -------------------------------------------------------------------------- }}}
-# {{{ copyLogo: Copy document logo when requested.
+  def copy_shared_header_footer
+    destination = File.join(@shared_data_dir, 'header-footer.tex')
+    return if File.exist?(destination)
 
-copyLogo() {
-  if [[ $logoFlag == 1 ]]; then
-    msg "Copying logo file ${dataDir}/logo.png"
-    cp -v data/logo.png ${dataDir}/logo.png
-  fi
-}
+    copy_file('data/header-footer.tex', destination)
+  end
 
-# -------------------------------------------------------------------------- }}}
-# copyTOF: Copy Test Output Factory when requested.
+  def copy_logo
+    return unless @logo_flag
 
-copyTOF() {
-  if [[ $tofFlag == 1 ]]; then
-    msg "Copying Test Output Factory file ${tofDir}"
-    cp -v data/test-results.tex ${tofDir}/test-results.tex
-  fi
-}
+    destination = File.join(@data_dir, 'logo.png')
+    msg("Copying logo file #{destination}")
+    copy_file('data/logo.png', destination)
+  end
 
-# -------------------------------------------------------------------------- }}}
-# {{{ abort: Aborting this procedure.
+  def copy_tof
+    return unless @tof_flag
 
-abort() {
-  msg "Aborting: ${1}"
-  exit
-}
+    destination = File.join(@tof_dir, 'test-results.tex')
+    msg("Copying Test Output Factory file #{destination}")
+    copy_file('data/test-results.tex', destination)
+  end
 
-# -------------------------------------------------------------------------- }}}
-# {{{ msg: msg is used to format strings to the console.
+  def write_template(source, destination, substitutions)
+    content = File.read(source)
+    substitutions.each do |marker, replacement|
+      content = content.gsub(marker, replacement)
+    end
+    File.write(destination, content)
+  end
 
-msg() {
-  echo
-  echo $1
-}
+  def copy_file(source, destination)
+    FileUtils.cp(source, destination, verbose: true)
+  end
 
-# -------------------------------------------------------------------------- }}}
-# {{{ Kick start this script.
+  def newdoc_path
+    ENV.fetch('NEWDOCPATH', nil)
+  end
 
-main "$@"
+  def fail!(message)
+    msg("Aborting: #{message}")
+    exit 1
+  end
 
-# -------------------------------------------------------------------------- }}}
+  def msg(message)
+    puts
+    puts message
+  end
+end
+
+NewDoc.new(ARGV).run

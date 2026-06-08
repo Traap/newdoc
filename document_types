@@ -1,18 +1,17 @@
-#!/bin/bash
-# {{{ List of supported autodoc document types.
+# frozen_string_literal: true
 
-docTypes=(
-  "stdCodeReviewDoc"
-  "stdDesignReviewDoc"
-  "stdTechPlanDoc"
-  "stdTechReportDoc"
-  "stdTestPlanDoc"
-  "stdTestRecordDoc"
-  "stdTestReportDoc"
-  "stdToolTestDoc"
-  "stdUnitTestDoc"
-  "stdVerTestDoc"
-  "stdDhfDoc"
-)
-
-# -------------------------------------------------------------------------- }}}
+# Supported autodoc document generator macros.  Keep this list aligned with the
+# boilerplate/*/standard-phrases.tex document commands in autodoc.
+DOCUMENT_TYPES = [
+  'stdCodeReviewDoc',
+  'stdDesignReviewDoc',
+  'stdDhfDoc',
+  'stdTechPlanDoc',
+  'stdTechReportDoc',
+  'stdTestPlanDoc',
+  'stdTestRecordDoc',
+  'stdTestReportDoc',
+  'stdToolTestDoc',
+  'stdUnitTestDoc',
+  'stdVerTestDoc'
+].freeze
