@@ -1,8 +1,8 @@
-## newdoc - Seed a LaTeX document with standard content. 
+## newdoc - Seed a LaTeX document with standard content.
 The **newdoc** repository simplifies initializing LaTeX documnets the meet
-minimum requirements defined by **autodoc**, **docbld**, and **tlc-article**. 
+minimum requirements defined by **autodoc**, **docbld**, and **tlc-article**.
 
-# Prerequisites 
+# Prerequisites
 1. [autodoc](https://GitHub.com/Traap/autodoc.git)
 1. [docbld](https://GitHub.com/Traap/docbld.git)
 1. [MiKTeX](https://miktex.org/download)
@@ -22,7 +22,7 @@ NEWDOCPATH=${HOME}/git/newdoc
 export NEWDOCPATH
 
 function newdoc() {
-  ${newdocPATH}/newdoc 
+  ${newdocPATH}/newdoc
 }
 ```
 
@@ -47,15 +47,12 @@ OPTIONS
 ```
 newdoc --dir report/summary --file=001 --title='Foo' --shared --logo
 newdoc --dir report/summary --file=002 --title='Bar' --shared
-newdoc --dir report/summary --file=003 --title='Baz' 
+newdoc --dir report/summary --file=003 --title='Baz'
 ```
 ### Copied Files
 | Option   | Files                        | Destination
-| ---      | ---                          | ---         
+| ---      | ---                          | ---
 | --file   | fileName.tex fileName.texx   | path/to/dir/filename path/to/dir/filename/data
 | --logo   | logo.png                     | path/to/dir/filename/data
 | --shared | additional-layout-shared.tex | path/to/dir/shared/data/additional-layout.tex
 
-## Project Management
-Please refer to my [Lightweight Project Mangement](https://github.com/Traap/lpm)
-for the project management strategy I use.
